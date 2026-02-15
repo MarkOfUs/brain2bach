@@ -109,6 +109,7 @@ socket.on("emotion_update", data => {
 
     const labelEl = document.getElementById("emotion");
     const dotEl = document.getElementById("emotion-dot");
+    const probsListEl = document.getElementById("probs-list");
 
     if (!labelEl || !dotEl) return;
 
@@ -129,6 +130,25 @@ socket.on("emotion_update", data => {
     };
 
     dotEl.style.background = colors[label] || "white";
+
+    /* Show emotion probabilities */
+    if (probsListEl && data.probs && typeof data.probs === "object") {
+        const sorted = Object.entries(data.probs)
+            .sort((a, b) => b[1] - a[1])
+            .map(([name, pct]) => ({
+                name: name,
+                pct: (pct * 100).toFixed(1),
+                bar: Math.round(pct * 100)
+            }));
+        probsListEl.innerHTML = sorted.map(
+            ({ name, pct, bar }) =>
+                `<div class="prob-row">
+                    <span class="prob-name">${name}</span>
+                    <div class="prob-bar-wrap"><div class="prob-bar" style="width:${bar}%"></div></div>
+                    <span class="prob-pct">${pct}%</span>
+                </div>`
+        ).join("");
+    }
 });
 
 /* =================================================
@@ -146,7 +166,6 @@ function updateUI() {
 
     const canGenerate = recordingState === "recorded";
     if (createSongBtn) createSongBtn.disabled = !canGenerate;
-    if (directMusicBtn) directMusicBtn.disabled = !canGenerate;
 
     if (recordingState === "idle") {
         recordBtn.innerText = "Start recording";
@@ -159,8 +178,8 @@ function updateUI() {
     }
 
     if (recordingState === "recorded") {
-        recordBtn.innerText = "Recording complete";
-        recordBtn.disabled = true;
+        recordBtn.innerText = "Start another recording";
+        recordBtn.disabled = false;
     }
 }
 
@@ -169,7 +188,7 @@ function updateUI() {
 ================================================= */
 
 recordBtn?.addEventListener("click", () => {
-    if (recordingState === "idle") {
+    if (recordingState === "idle" || recordingState === "recorded") {
         recordingState = "recording";
         socket.emit("start_recording");
     } else if (recordingState === "recording") {
@@ -180,34 +199,45 @@ recordBtn?.addEventListener("click", () => {
 });
 
 createSongBtn?.addEventListener("click", () => {
-    console.log("🎵 Create song (Emotion → Suno) clicked");
+    const btn = document.getElementById("play-song-btn");
+    if (btn) { btn.hidden = true; btn.href = "#"; btn.classList.remove("song-ready"); }
     socket.emit("create_song");
-});
-
-/* Direct Music RunPod button (EEG → WAV) */
-const directMusicBtn = document.getElementById("create-song-direct-btn");
-directMusicBtn?.addEventListener("click", () => {
-    console.log("🎵 Create song (Direct EEG → Music) clicked");
-    socket.emit("create_song_direct");
 });
 
 /* Song generation status/result */
 socket.on("song_status", (data) => {
-    console.log("📊 Song status:", data);
     const statusEl = document.getElementById("song-status");
     if (statusEl) statusEl.textContent = data.message || "";
 });
 
-socket.on("song_ready", (data) => {
-    console.log("✅ Song ready:", data);
+function showPlayButton(url) {
+    const btn = document.getElementById("play-song-btn");
     const statusEl = document.getElementById("song-status");
-    if (statusEl) statusEl.textContent = "Ready!";
-    const audioEl = document.getElementById("song-audio");
-    if (audioEl && data.audio) {
-        audioEl.src = data.audio + "?t=" + Date.now();
-        audioEl.hidden = false;
-        audioEl.play?.();
+    const u = (url || "").trim();
+    if (!u) return;
+    if (btn) {
+        btn.href = u;
+        btn.hidden = false;
+        btn.classList.add("song-ready");
     }
+    if (statusEl) statusEl.textContent = "Song ready! Click below to listen.";
+}
+
+/* Suno streaming URL – show play button when ready (links to audiopipe.suno.ai) */
+socket.on("song_streaming", (data) => {
+    const url = data && (data.audio_url || data.url);
+    if (url) {
+        showPlayButton(url);
+        if (data.message) {
+            const el = document.getElementById("song-status");
+            if (el) el.textContent = data.message;
+        }
+    }
+});
+
+socket.on("song_ready", (data) => {
+    const url = data.audio_url || (data.audio ? (window.location.origin + data.audio + "?t=" + Date.now()) : null);
+    if (url) showPlayButton(url);
 });
 
 socket.on("song_error", (data) => {

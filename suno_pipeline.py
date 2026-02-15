@@ -3,7 +3,7 @@ import re
 import json
 import time
 from pathlib import Path
-from typing import Dict, Any, Optional, Tuple, List
+from typing import Dict, Any, Optional, Tuple, List, Callable
 
 import numpy as np
 import requests
@@ -266,7 +266,8 @@ def poll_clip(
     clip_id: str,
     poll_interval: int = POLL_INTERVAL_SECONDS,
     max_seconds: int = MAX_POLL_SECONDS,
-    wait_for_complete: bool = True
+    wait_for_complete: bool = True,
+    on_audio_url: Optional[Callable[[str], None]] = None,
 ) -> Dict[str, Any]:
     start = time.time()
     first_stream_url_printed = False
@@ -279,9 +280,18 @@ def poll_clip(
 
         print(f"[SUNO {elapsed:>3}s] status={status} audio_url={'yes' if bool(audio_url) else 'no'}")
 
-        if status in {"streaming", "complete"} and audio_url and not first_stream_url_printed:
-            print("Suno audio URL:", audio_url)
-            first_stream_url_printed = True
+        if status in {"streaming", "complete"} and audio_url:
+            if not first_stream_url_printed:
+                play_url = audio_url
+                if "audiopipe.suno.ai" not in str(audio_url):
+                    play_url = f"https://audiopipe.suno.ai/?item_id={clip_id}"
+                print("Suno audio URL:", play_url)
+                first_stream_url_printed = True
+                if on_audio_url:
+                    try:
+                        on_audio_url(play_url)
+                    except Exception:
+                        pass
 
         if status == "complete":
             return clip
@@ -345,7 +355,8 @@ def run_suno_from_emotion_probs(
     cover_clip_id: str = "AUTO_FROM_AUDIO",
     run_transcription: bool = False,
     wait_for_complete_seed: bool = False,
-    wait_for_complete_final: bool = False
+    wait_for_complete_final: bool = False,
+    on_audio_url: Optional[Callable[[str], None]] = None,
 ) -> Dict[str, Any]:
     """
     Main entry point for Flask.
@@ -424,7 +435,8 @@ def run_suno_from_emotion_probs(
         clip_id=final_clip_id,
         poll_interval=POLL_INTERVAL_SECONDS,
         max_seconds=MAX_POLL_SECONDS,
-        wait_for_complete=wait_for_complete_final
+        wait_for_complete=wait_for_complete_final,
+        on_audio_url=on_audio_url,
     )
 
     audio_url = final_clip.get("audio_url")

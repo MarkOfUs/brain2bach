@@ -51,17 +51,13 @@
             <!-- ---------- Analytics ---------- -->
 
             <div class="card">
-                <div class="label">Amplitude (30 s ago)</div>
-                <div id="amplitude" class="value">-- µV</div>
-                <div class="bar">
-                    <div id="amp-bar" class="fill"></div>
-                </div>
-            </div>
-
-            <div class="card">
                 <div class="label">Emotion (latest)</div>
                 <div id="emotion" class="value">UNKNOWN</div>
                 <div id="emotion-dot" class="dot"></div>
+                <div id="emotion-probs" class="emotion-probs">
+                    <div class="probs-header">Probabilities</div>
+                    <div id="probs-list" class="probs-list"></div>
+                </div>
             </div>
 
             <!-- ---------- Recording Controls ---------- -->
@@ -75,15 +71,8 @@
                 <button id="create-song-btn"
                         class="action-button"
                         disabled
-                        title="EEG → Emotion RunPod → Suno (emotion-based music)">
-                    Create song (Emotion → Suno)
-                </button>
-
-                <button id="create-song-direct-btn"
-                        class="action-button"
-                        disabled
-                        title="EEG → Music RunPod (direct brain-to-music)">
-                    Create song (Direct)
+                        title="EEG → Emotion RunPod → Suno pipeline">
+                    Create song
                 </button>
 
                 <button id="cancel-btn"
@@ -94,7 +83,9 @@
             </div>
 
             <div id="song-status" class="song-status">—</div>
-            <audio id="song-audio" controls hidden></audio>
+            <a id="play-song-btn" href="#" target="_blank" rel="noopener" class="action-button play-song-btn" hidden>
+                ▶ Play song
+            </a>
 
         </div>
     </div>

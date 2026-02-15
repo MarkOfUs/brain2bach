@@ -5,6 +5,13 @@ import base64
 import threading
 from pathlib import Path
 
+# Load .env before reading env vars (optional)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 import requests
 from flask import Flask, render_template, send_from_directory, request
 from flask_socketio import SocketIO
@@ -15,9 +22,9 @@ from suno_pipeline import run_suno_from_emotion_probs, EMOTION_LABELS
 # ENVIRONMENT (REQUIRED)
 # ============================================================
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-SUNO_API_TOKEN = os.getenv("SUNO_API_TOKEN")
-RUNPOD_API_KEY = os.getenv("RUNPOD_API_KEY")
+OPENAI_API_KEY = (os.getenv("OPENAI_API_KEY") or "").strip()
+SUNO_API_TOKEN = (os.getenv("SUNO_API_TOKEN") or "").strip()
+RUNPOD_API_KEY = (os.getenv("RUNPOD_API_KEY") or "").strip()
 MOCK_EEG = os.getenv("MOCK_EEG", "0").lower() in ("1", "true", "yes")
 SERIAL_PORT = os.getenv("SERIAL_PORT", "COM3")
 
@@ -44,7 +51,6 @@ RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
 # ============================================================
 
 EMOTION_RUNPOD_URL = "https://api.runpod.ai/v2/kw804mmqrwyhzz/runsync"
-MUSIC_RUNPOD_URL = "https://api.runpod.ai/v2/4c1o9eu4bhzzz2/runsync"
 
 # ============================================================
 # FLASK
@@ -111,7 +117,10 @@ LATEST_EMOTION = {"label": "UNKNOWN", "probs": {}}
 
 @app.route("/")
 def root():
-    return render_template("index.html")
+    return render_template(
+        "index.html",
+        mock_eeg=MOCK_EEG,
+    )
 
 @app.route("/recordings/<path:filename>")
 def download(filename):
@@ -164,85 +173,54 @@ def run_emotion_inference(sid=None):
         }
     }
 
-    r = requests.post(
-        EMOTION_RUNPOD_URL,
-        headers={
-            "Authorization": f"Bearer {RUNPOD_API_KEY}",
-            "Content-Type": "application/json"
-        },
-        json=payload,
-        timeout=120
-    )
+    headers = {
+        "Authorization": f"Bearer {RUNPOD_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    r = requests.post(EMOTION_RUNPOD_URL, headers=headers, json=payload, timeout=120)
 
+    if r.status_code == 401:
+        raise RuntimeError(
+            "RunPod API key rejected (401). Check RUNPOD_API_KEY in .env or environment. "
+            "Ensure the key is enabled and has Serverless/AI API permissions at runpod.io/settings."
+        )
     r.raise_for_status()
-    out = r.json().get("output", r.json())
+    resp = r.json()
+    out = resp.get("output", resp)
 
-    label = out["topk"][0]["label"]
-    probs = dict(zip(out["classes"], out["probs"]))
+    classes = out.get("classes", [])
+    probs_list = out.get("probs", [])
+    topk = out.get("topk", [])
 
-    # Ensure all EMOTION_LABELS present (pad missing with 0)
-    emotion_probs = {k: float(probs.get(k, 0)) for k in EMOTION_LABELS}
+    if not classes or not probs_list or len(classes) != len(probs_list):
+        raise RuntimeError(
+            f"RunPod returned invalid format. classes={len(classes)} probs={len(probs_list)}"
+        )
+
+    probs_raw = dict(zip(classes, [float(p) for p in probs_list]))
+    probs_lower = {str(k).lower().strip(): v for k, v in probs_raw.items()}
+
+    emotion_probs = {}
+    for k in EMOTION_LABELS:
+        val = probs_lower.get(k.lower(), 0)
+        if isinstance(val, (int, float)):
+            emotion_probs[k] = float(val)
+        else:
+            emotion_probs[k] = 0.0
+
     s = sum(emotion_probs.values())
     if s > 0:
         emotion_probs = {k: v / s for k, v in emotion_probs.items()}
+    else:
+        emotion_probs = {k: 1.0 / len(EMOTION_LABELS) for k in EMOTION_LABELS}
 
-    LATEST_EMOTION = {"label": label.upper(), "probs": emotion_probs}
+    label = topk[0]["label"] if topk else (classes[0] if classes else "UNKNOWN")
+
+    LATEST_EMOTION = {"label": str(label).upper(), "probs": emotion_probs}
 
     socketio.emit("emotion_update", LATEST_EMOTION)
 
     return emotion_probs
-
-
-# ============================================================
-# RUNPOD MUSIC (mat → base64 → WAV)
-# ============================================================
-
-def run_music_inference():
-    """Send mat snapshot to Music RunPod, return WAV bytes."""
-    if not SNAPSHOT_PATH.exists():
-        raise FileNotFoundError(
-            "No EEG recording available. Start recording, wait a few seconds, then stop."
-        )
-
-    with open(SNAPSHOT_PATH, "rb") as f:
-        mat_b64 = base64.b64encode(f.read()).decode("utf-8")
-
-    payload = {
-        "input": {
-            "mat_b64": mat_b64,
-            "target_t": 2101,
-            "griffin_iters": 32,
-            "use_refiner": False,
-            "mat_key_data": "data",
-            "mat_key_time": "t_sec",
-            "channel_cols": [1, 2, 3],
-        }
-    }
-
-    r = requests.post(
-        MUSIC_RUNPOD_URL,
-        headers={
-            "Authorization": f"Bearer {RUNPOD_API_KEY}",
-            "Content-Type": "application/json"
-        },
-        json=payload,
-        timeout=180
-    )
-
-    r.raise_for_status()
-    out = r.json().get("output", r.json())
-
-    if "error" in out:
-        raise RuntimeError(out["error"])
-
-    wav_b64 = out.get("wav_b64")
-    if not wav_b64:
-        raise RuntimeError("Music RunPod did not return wav_b64")
-
-    wav_path = RECORDINGS_DIR / "music_runpod_generated.wav"
-    wav_path.write_bytes(base64.b64decode(wav_b64))
-
-    return str(wav_path)
 
 
 # ============================================================
@@ -286,18 +264,31 @@ def create_song():
             emotion_probs = run_emotion_inference()
 
             emit_status({"status": "suno", "message": "Generating music with Suno..."})
+
+            def on_audio_url(url: str):
+                payload = {"audio_url": url, "message": "Song ready! Click to listen."}
+                socketio.emit("song_streaming", payload, to=sid)
+                socketio.emit("song_status", {"message": payload["message"]}, to=sid)
+
             result = run_suno_from_emotion_probs(
                 emotion_probs=emotion_probs,
                 out_dir=RECORDINGS_DIR,
                 cover_clip_id="AUTO_FROM_AUDIO",
-                wait_for_complete_final=True
+                wait_for_complete_final=True,
+                on_audio_url=on_audio_url,
             )
 
+            audio_url = result.get("audio_url")
+            clip_id = result.get("final_clip_id")
+            if not audio_url or "audiopipe.suno.ai" not in str(audio_url):
+                if clip_id:
+                    audio_url = f"https://audiopipe.suno.ai/?item_id={clip_id}"
             socketio.emit(
                 "song_ready",
                 {
                     "emotion": LATEST_EMOTION["label"],
                     "audio": "/recordings/suno_generated.wav",
+                    "audio_url": audio_url,
                     "emotion_probs": LATEST_EMOTION["probs"],
                 },
                 to=sid,
@@ -311,29 +302,6 @@ def create_song():
 
     socketio.start_background_task(job)
 
-
-@socketio.on("create_song_direct")
-def create_song_direct():
-    """Use Music RunPod: EEG mat → WAV (no Suno)."""
-    sid = request.sid
-
-    def job():
-        try:
-            socketio.emit("song_status", {"status": "music", "message": "Converting brain signals to music..."}, to=sid)
-            wav_path = run_music_inference()
-            socketio.emit(
-                "song_ready",
-                {"emotion": "DIRECT", "audio": "/recordings/music_runpod_generated.wav"},
-                to=sid,
-            )
-        except FileNotFoundError as e:
-            socketio.emit("song_error", {"message": str(e)}, to=sid)
-        except Exception as e:
-            socketio.emit("song_error", {"message": f"Music generation failed: {e}"}, to=sid)
-            import traceback
-            traceback.print_exc()
-
-    socketio.start_background_task(job)
 
 # ============================================================
 # MAIN
