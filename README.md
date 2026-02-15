@@ -127,7 +127,7 @@ If `include_generated=true`, the output may also include:
 
 ---
 
-## Colab: Build a base64 payload from a local `.mat`
+## Build a base64 payload from a local `.mat`
 
 This snippet reads `/content/capture.mat`, base64-encodes it, and writes a request JSON payload.
 
@@ -179,7 +179,7 @@ curl -X POST "https://api.runpod.ai/v2/kw804mmqrwyhzz/runsync" \
 
 ---
 
-## Decoding the music output WAV (Colab)
+## Decoding the music output WAV
 
 After you call `runsync` and get a JSON response, decode `wav_b64` to a playable WAV:
 
