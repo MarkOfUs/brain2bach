@@ -1,3 +1,29 @@
+# Brain2Bach – EEG to Music
+
+Generate music from brain signals using two RunPod Serverless pods plus Suno. The web app records EEG (or uses mock data), sends `.mat` snapshots to RunPod, and produces music either via emotion inference → Suno or via direct EEG → Music AI.
+
+## Quick Start
+
+```bash
+# 1. Install dependencies
+pip install -r requirements.txt
+
+# 2. Set environment variables
+export OPENAI_API_KEY="your-openai-key"
+export SUNO_API_TOKEN="your-suno-token"
+export RUNPOD_API_KEY="your-runpod-key"
+
+# 3. (Optional) Use mock EEG if no serial device
+export MOCK_EEG=1
+
+# 4. Run the Flask app
+python app.py
+```
+
+Open http://127.0.0.1:5000 in your browser. Record EEG (or use mock mode), then click **Create song (Emotion → Suno)** or **Create song (Direct)**.
+
+---
+
 # RunPod Serverless Pods (Base64 `.mat` Flow)
 
 This project uses **two RunPod Serverless pods** (Docker images). Both endpoints are **JSON in / JSON out**.  

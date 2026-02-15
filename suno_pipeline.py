@@ -18,7 +18,7 @@ EMOTION_LABELS = [
     "anger", "fear", "disgust", "sadness", "neutral"
 ]
 
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.2")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
 POLL_INTERVAL_SECONDS = int(os.getenv("SUNO_POLL_INTERVAL_SECONDS", "6"))
 MAX_POLL_SECONDS = int(os.getenv("SUNO_MAX_POLL_SECONDS", "240"))
 
