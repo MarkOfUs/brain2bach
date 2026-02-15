@@ -5,6 +5,23 @@ To send a `.mat` file, we base64-encode the raw bytes and include it in the requ
 
 ---
 
+## Endpoints (RunPod IDs)
+
+- **Music pod endpoint ID:** `4c1o9eu4bhzzz2`
+- **Emotion pod endpoint ID:** `kw804mmqrwyhzz`
+
+### `runsync` URLs (use in cURL)
+
+```bash
+# Music
+https://api.runpod.ai/v2/4c1o9eu4bhzzz2/runsync
+
+# Emotion
+https://api.runpod.ai/v2/kw804mmqrwyhzz/runsync
+```
+
+---
+
 ## Pod 1: Emotion Inference (`markofus/eeg-mat-infer:latest`)
 
 ### Input payload (JSON)
@@ -77,7 +94,9 @@ This pod converts EEG `.mat` → **generated WAV audio** and returns the WAV byt
 - `target_t` *(optional)*: target length after resampling to 100 Hz (default: `2101`)
 - `griffin_iters` *(optional)*: Griffin–Lim iterations (default: `32`; higher = slower but cleaner audio)
 - `use_refiner` *(optional)*: apply refiner model if available (default: `false`)
-- `include_generated` *(optional)*: if `true`, also returns unrefined audio as `wav_gen_b64` (default: `false`)
+- `include_generated` *(optional)*: if `true`, also return the **pre-refiner** WAV as `wav_gen_b64` (default: `false`)
+  - `wav_b64` is always the **main output**.
+  - `wav_gen_b64` is useful for A/B comparison if `use_refiner=true`.
 - `.mat parsing knobs` *(optional)*:
   - `mat_key_data` (default `"data"`)
   - `mat_key_time` (default `"t_sec"`)
@@ -112,8 +131,6 @@ If `include_generated=true`, the output may also include:
 
 This snippet reads `/content/capture.mat`, base64-encodes it, and writes a request JSON payload.
 
-### Generic payload (edit per pod)
-
 ```python
 import base64, json
 
@@ -136,47 +153,25 @@ print("Wrote /content/payload.json")
 print(mat_b64[:200] + "...")
 ```
 
-### Emotion pod payload example
-
-```python
-payload = {
-    "input": {
-        "mat_b64": mat_b64,
-        "topk": 3,
-        "window_start": 0,
-        "window_end": 250,
-        "mat_channel_names": ["FP1", "FZ", "FP2"]
-    }
-}
-```
-
-### Music pod payload example (refiner off)
-
-```python
-payload = {
-    "input": {
-        "mat_b64": mat_b64,
-        "target_t": 2101,
-        "griffin_iters": 32,
-        "use_refiner": False,
-        "include_generated": False,
-        "mat_key_data": "data",
-        "mat_key_time": "t_sec",
-        "channel_cols": [1, 2, 3]
-    }
-}
-```
-
 ---
 
 ## RunPod: `runsync` Example (cURL)
 
-Replace:
-- `<ENDPOINT_ID>` with your RunPod Serverless endpoint ID
-- `$RUNPOD_API_KEY` with your API key
+Replace `$RUNPOD_API_KEY` with your API key, and use one of the endpoint IDs above.
+
+### Music pod
 
 ```bash
-curl -X POST "https://api.runpod.ai/v2/<ENDPOINT_ID>/runsync" \
+curl -X POST "https://api.runpod.ai/v2/4c1o9eu4bhzzz2/runsync" \
+  -H "Authorization: Bearer $RUNPOD_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d @payload.json
+```
+
+### Emotion pod
+
+```bash
+curl -X POST "https://api.runpod.ai/v2/kw804mmqrwyhzz/runsync" \
   -H "Authorization: Bearer $RUNPOD_API_KEY" \
   -H "Content-Type: application/json" \
   -d @payload.json
@@ -190,15 +185,14 @@ After you call `runsync` and get a JSON response, decode `wav_b64` to a playable
 
 ```python
 import base64
+from IPython.display import Audio
 
-# If your response JSON is in `resp`, adjust as needed:
-# RunPod often nests result under resp["output"].
+# RunPod often nests the result under resp["output"].
 out = resp.get("output", resp)
 
 wav_bytes = base64.b64decode(out["wav_b64"])
 with open("/content/out.wav", "wb") as f:
     f.write(wav_bytes)
 
-from IPython.display import Audio
 Audio("/content/out.wav")
 ```
