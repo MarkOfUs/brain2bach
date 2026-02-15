@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BachBrain</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: sans-serif;
+            background: #111;
+            color: white;
+        }
+
+        .topbar {
+            height: 48px;
+            background: #1e1e1e;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+        }
+
+        .tab {
+            margin-right: 16px;
+            cursor: pointer;
+            color: #ccc;
+        }
+
+        .tab.active {
+            color: white;
+            font-weight: bold;
+        }
+
+        iframe {
+            width: 100%;
+            height: calc(100vh - 48px);
+            border: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <div class="tab" onclick="go('eeg')">EEG</div>
+    <div class="tab" onclick="go('recordings')">Recordings</div>
+</div>
+
+<iframe id="content" src="/eeg"></iframe>
+
+<script>
+    function go(where) {
+        const iframe = document.getElementById("content");
+        iframe.src = "/" + where;
+
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+        event.target.classList.add("active");
+    }
+</script>
+
+</body>
+</html>

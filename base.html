@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}EEG Audio App{% endblock %}</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+    <!-- Top App Bar -->
+    <header class="app-bar">
+        <button class="menu-button" onclick="toggleDrawer()">
+            ☰
+        </button>
+        <div class="app-title">
+            EEG Audio
+        </div>
+    </header>
+
+    <!-- Side Navigation Drawer -->
+    <nav id="drawer" class="side-drawer">
+        <a href="{{ url_for('eeg') }}" class="nav-item">
+            EEG
+        </a>
+        <a href="{{ url_for('recordings') }}" class="nav-item">
+            Recordings
+        </a>
+    </nav>
+
+
+    <!-- Overlay for drawer -->
+    <div id="drawer-overlay" class="drawer-overlay" onclick="closeDrawer()"></div>
+
+    <!-- Main Content -->
+    <main class="content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+        function toggleDrawer() {
+            const drawer = document.getElementById("drawer");
+            const overlay = document.getElementById("drawer-overlay");
+
+            drawer.classList.toggle("open");
+            overlay.classList.toggle("show");
+        }
+
+        function closeDrawer() {
+            const drawer = document.getElementById("drawer");
+            const overlay = document.getElementById("drawer-overlay");
+
+            drawer.classList.remove("open");
+            overlay.classList.remove("show");
+        }
+    </script>
+
+</body>
+</html>
