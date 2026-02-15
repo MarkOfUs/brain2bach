@@ -1,0 +1,195 @@
+/* ---------- Global ---------- */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background-color: #121212;
+    color: #ffffff;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* ---------- App Bar ---------- */
+
+.app-bar {
+    height: 56px;
+    background-color: #1f1f1f;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+}
+
+.menu-button {
+    background: none;
+    border: none;
+    color: #ffffff;
+    font-size: 22px;
+    cursor: pointer;
+    margin-right: 16px;
+}
+
+.menu-button:hover {
+    opacity: 0.8;
+}
+
+.app-title {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+/* ---------- Side Drawer ---------- */
+
+.side-drawer {
+    position: fixed;
+    top: 56px;
+    left: 0;
+    width: 240px;
+    height: calc(100% - 56px);
+    background-color: #1b1b1b;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    z-index: 1001;
+    padding-top: 12px;
+}
+
+.side-drawer.open {
+    transform: translateX(0);
+}
+
+.nav-item {
+    display: block;
+    padding: 12px 20px;
+    font-size: 15px;
+    color: #e0e0e0;
+}
+
+.nav-item:hover {
+    background-color: #2a2a2a;
+}
+
+/* ---------- Drawer Overlay ---------- */
+
+.drawer-overlay {
+    position: fixed;
+    top: 56px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: none;
+    z-index: 1000;
+}
+
+.drawer-overlay.show {
+    display: block;
+}
+
+/* ---------- Content ---------- */
+
+.content {
+    padding: 72px 24px 24px 24px;
+}
+
+/* ---------- Recordings Page ---------- */
+
+.page-title {
+    margin-bottom: 20px;
+    font-size: 24px;
+}
+
+.recordings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* ---------- Recording Card ---------- */
+
+.recording-card {
+    display: flex;
+    align-items: center;
+    background-color: #1f1f1f;
+    border-radius: 8px;
+    padding: 12px 16px;
+    transition: background-color 0.2s ease;
+}
+
+.recording-card:hover {
+    background-color: #2a2a2a;
+}
+
+/* ---------- Thumbnail ---------- */
+
+.recording-thumb {
+    width: 48px;
+    height: 48px;
+    background-color: #333333;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    margin-right: 16px;
+}
+
+/* ---------- Info ---------- */
+
+.recording-info {
+    flex-grow: 1;
+}
+
+.recording-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.recording-desc {
+    font-size: 13px;
+    color: #aaaaaa;
+}
+
+/* ---------- Actions ---------- */
+
+.recording-actions {
+    margin-left: 16px;
+}
+
+.play-btn {
+    background-color: #ffffff;
+    color: #000000;
+    border: none;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.play-btn:hover {
+    background-color: #dddddd;
+}
+
+/* ---------- Empty State ---------- */
+
+.empty-state {
+    text-align: center;
+    margin-top: 80px;
+    color: #aaaaaa;
+}
+
+.empty-state .muted {
+    font-size: 13px;
+    margin-top: 6px;
+}
